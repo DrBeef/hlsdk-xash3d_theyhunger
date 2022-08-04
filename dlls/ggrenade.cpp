@@ -386,7 +386,7 @@ CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector ve
 	return pGrenade;
 }
 
-CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time)
+CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time, bool modelTNT)
 {
 	CGrenade* pGrenade = GetClassPtr((CGrenade*)NULL);
 	pGrenade->Spawn();
@@ -419,7 +419,15 @@ CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecV
 	pGrenade->pev->gravity = 0.5f;
 	pGrenade->pev->friction = 0.8f;
 
-	SET_MODEL(ENT(pGrenade->pev), "models/w_grenade.mdl");
+	if (modelTNT == TRUE)
+	{
+		SET_MODEL(ENT(pGrenade->pev), "models/w_tnt.mdl");
+	}
+	else
+	{
+		SET_MODEL(ENT(pGrenade->pev), "models/w_grenade.mdl");
+	}
+	
 	pGrenade->pev->dmg = 100;
 
 	return pGrenade;

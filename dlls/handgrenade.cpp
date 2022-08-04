@@ -114,90 +114,130 @@ void CHandGrenade::Holster( int skiplocal /* = 0 */ )
 
 void CHandGrenade::PrimaryAttack()
 {
-	if( !m_flStartThrow && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0 )
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] > 0)
 	{
-		m_flStartThrow = gpGlobals->time;
-		m_flReleaseThrow = 0.0f;
+		if (!m_flStartThrow)
+		{
+			//Use start throw to record when the grenade is going to explode.. add a small amount of unpredictability to the fuse
+			//length which is common for chemical fused grenades apparently
+			m_flStartThrow = gpGlobals->time + 5.0f + UTIL_SharedRandomFloat(m_pPlayer->random_seed, -0.25f, 0.25f);
+			m_flReleaseThrow = 0;
 
-		SendWeaponAnim( HANDGRENADE_PINPULL );
-		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5f;
+			//Retain current position
+			for (int i = 0; i < 4; ++i)
+			{
+				m_WeaponPositions[i] = (m_pPlayer->GetWeaponPosition() - m_pPlayer->GetClientOrigin());
+				m_WeaponPositionTimestamps[i] = gpGlobals->time;
+			}
+
+			SendWeaponAnim(HANDGRENADE_PINPULL);
+			m_flTimeWeaponIdle = UTIL_WeaponTimeBase(); //Kick in weapon idle as soon as trigger is released
+
+			//vibrate a bit
+			char buffer[256];
+			sprintf(buffer, "vibrate 80.0 %i 0.4\n", 1 - (int)CVAR_GET_FLOAT("hand"));
+			SERVER_COMMAND(buffer);
+		}
+		else
+		{
+			// check remaining fuse length
+			float fuseRemaining = m_flStartThrow - gpGlobals->time;
+			if (fuseRemaining < 0)
+			{
+				//Oh dear, silly player still holding grenade and it is going to explode!
+				Vector nullVelocity;
+				CGrenade::ShootTimed(m_pPlayer->pev, m_pPlayer->GetWeaponPosition(), nullVelocity, 0.05f, TRUE);
+
+				//Reset in case player survived that foolishness
+				m_flStartThrow = 0;
+				m_flReleaseThrow = 0;
+
+				m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
+				if (!m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
+				{
+					// just threw last grenade
+					m_flTimeWeaponIdle = m_flNextSecondaryAttack = m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.5f;
+					RetireWeapon();
+				}
+				else
+				{
+					SendWeaponAnim(HANDGRENADE_DRAW);
+					m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.5f;
+				}
+			}
+			else
+			{
+				//Record recent weapon position for trajectory
+				for (int i = 3; i != 0; --i)
+				{
+					m_WeaponPositions[i] = m_WeaponPositions[i - 1];
+					m_WeaponPositionTimestamps[i] = m_WeaponPositionTimestamps[i - 1];
+				}
+
+				m_WeaponPositions[0] = (m_pPlayer->GetWeaponPosition() - m_pPlayer->GetClientOrigin());
+				m_WeaponPositionTimestamps[0] = gpGlobals->time;
+			}
+		}
 	}
 }
 
-void CHandGrenade::WeaponIdle( void )
+#define VectorDistance(a, b) (sqrt( VectorDistance2( a, b )))
+#define VectorDistance2(a, b) (((a)[0] - (b)[0]) * ((a)[0] - (b)[0]) + ((a)[1] - (b)[1]) * ((a)[1] - (b)[1]) + ((a)[2] - (b)[2]) * ((a)[2] - (b)[2]))
+
+void CHandGrenade::WeaponIdle(void)
 {
-	if( m_flReleaseThrow == 0.0f && m_flStartThrow )
-		 m_flReleaseThrow = gpGlobals->time;
-
-	if( m_flTimeWeaponIdle > UTIL_WeaponTimeBase() )
-		return;
-
-	if( m_flStartThrow )
+	if (m_flStartThrow)
 	{
-		Vector angThrow = m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle;
+		//Caclulate speed between oldest reading and second to last
+		float distance = VectorDistance(m_WeaponPositions[1], m_WeaponPositions[3]);
+		float t = m_WeaponPositionTimestamps[1] - m_WeaponPositionTimestamps[3];
+		float velocity = distance / t;
 
-		if( angThrow.x < 0.0f )
-			angThrow.x = -10.0f + angThrow.x * ( ( 90.0f - 10.0f ) / 90.0f );
-		else
-			angThrow.x = -10.0f + angThrow.x * ( ( 90.0f + 10.0f ) / 90.0f );
+		//Calculate trajectory
+		Vector trajectory = m_WeaponPositions[1] - m_WeaponPositions[3];
 
-		float flVel = ( 90.0f - angThrow.x ) * 4.0f;
-		if( flVel > 500.0f )
-			flVel = 500.0f;
+		// Reduce velocity by 1/3 for a bit of weight otherwise it is too light
+		Vector throwVelocity = trajectory * (velocity * (2.0f / 3.0f));
 
-		UTIL_MakeVectors( angThrow );
+		//Add in player velocity
+		throwVelocity = throwVelocity + m_pPlayer->pev->velocity;
 
-		Vector vecSrc = m_pPlayer->pev->origin + m_pPlayer->pev->view_ofs + gpGlobals->v_forward * 16.0f;
-
-		Vector vecThrow = gpGlobals->v_forward * flVel + m_pPlayer->pev->velocity;
-
-		// alway explode 3 seconds after the pin was pulled
-		float time = m_flStartThrow - gpGlobals->time + 3.0f;
-		if( time < 0.0f )
-			time = 0.0f;
-
-		CHandGrenade::ShootTimed( m_pPlayer->pev, vecSrc, vecThrow, time );
-
-		if( flVel < 500.0f )
+		// Calculate remaining fuse time
+		float fuseRemaining = m_flStartThrow - gpGlobals->time;
+		if (fuseRemaining < 0)
 		{
-			SendWeaponAnim( HANDGRENADE_THROW1 );
+			fuseRemaining = 0;
 		}
-		else if( flVel < 1000.0f )
-		{
-			SendWeaponAnim( HANDGRENADE_THROW2 );
-		}
-		else
-		{
-			SendWeaponAnim( HANDGRENADE_THROW3 );
-		}
+		CGrenade::ShootTimed(m_pPlayer->pev, m_pPlayer->GetWeaponPosition(), throwVelocity, fuseRemaining, TRUE);
 
-		// player "shoot" animation
-		m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
+		//Player "shoot" animation is not needed, player has provided the "animation" for us by actually throwing
+		//So just go back to "idle"
+		m_pPlayer->SetAnimation(PLAYER_IDLE);
 
-		m_flReleaseThrow = 0;
 		m_flStartThrow = 0;
+		m_flReleaseThrow = gpGlobals->time;
 		m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.5f;
-		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5f;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase();
 
 		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType]--;
 
-		if( !m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] )
+		if (!m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
 		{
 			// just threw last grenade
-			// set attack times in the future, and weapon idle in the future so we can see the whole throw
-			// animation, weapon idle will automatically retire the weapon for us.
+			// set attack times in the future, and weapon idle will automatically retire the weapon for us.
 			m_flTimeWeaponIdle = m_flNextSecondaryAttack = m_flNextPrimaryAttack = UTIL_WeaponTimeBase() + 0.5f;// ensure that the animation can finish playing
 		}
+
 		return;
 	}
-	else if( m_flReleaseThrow > 0.0f )
+	else if (m_flReleaseThrow > 0)
 	{
 		// we've finished the throw, restart.
-		m_flStartThrow = 0.0f;
+		m_flReleaseThrow = 0;
 
-		if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] )
+		if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
 		{
-			SendWeaponAnim( HANDGRENADE_DRAW );
+			SendWeaponAnim(HANDGRENADE_DRAW);
 		}
 		else
 		{
@@ -205,65 +245,15 @@ void CHandGrenade::WeaponIdle( void )
 			return;
 		}
 
-		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10.0f, 15.0f );
-		m_flReleaseThrow = -1.0f;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 10.0f;
+
 		return;
 	}
 
-	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] )
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType])
 	{
-		int iAnim;
-		float flRand = UTIL_SharedRandomFloat( m_pPlayer->random_seed, 0.0f, 1.0f );
-		if( flRand <= 0.75f )
-		{
-			iAnim = HANDGRENADE_IDLE;
-			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10.0f, 15.0f );// how long till we do this again.
-		}
-		else
-		{
-			iAnim = HANDGRENADE_FIDGET;
-			m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 75.0f / 30.0f;
-		}
-
-		SendWeaponAnim( iAnim );
+		int iAnim = HANDGRENADE_IDLE;
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5f;
+		SendWeaponAnim(iAnim);
 	}
-}
-
-CGrenade *CHandGrenade::ShootTimed( entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, float time )
-{
-	CGrenade *pGrenade = GetClassPtr( (CGrenade *)NULL );
-	pGrenade->Spawn();
-	UTIL_SetOrigin( pGrenade->pev, vecStart );
-	pGrenade->pev->velocity = vecVelocity;
-	pGrenade->pev->angles = UTIL_VecToAngles( pGrenade->pev->velocity );
-	pGrenade->pev->owner = ENT( pevOwner );
-
-	pGrenade->SetTouch( &CGrenade::BounceTouch );	// Bounce if touched
-
-	// Take one second off of the desired detonation time and set the think to PreDetonate. PreDetonate
-	// will insert a DANGER sound into the world sound list and delay detonation for one second so that
-	// the grenade explodes after the exact amount of time specified in the call to ShootTimed().
-
-	pGrenade->pev->dmgtime = gpGlobals->time + time;
-	pGrenade->SetThink( &CGrenade::TumbleThink );
-	pGrenade->pev->nextthink = gpGlobals->time + 0.1f;
-	if( time < 0.1f )
-	{
-		pGrenade->pev->nextthink = gpGlobals->time;
-		pGrenade->pev->velocity = Vector( 0, 0, 0 );
-	}
-
-	pGrenade->pev->sequence = RANDOM_LONG( 3, 6 );
-	pGrenade->pev->framerate = 1.0;
- 
-	// Tumble through the air
-	// pGrenade->pev->avelocity.x = -400;
-
-	pGrenade->pev->gravity = 0.5;
-	pGrenade->pev->friction = 0.8;
-
-	SET_MODEL( ENT( pGrenade->pev ), "models/w_tnt.mdl" );
-	pGrenade->pev->dmg = 100;
-
-	return pGrenade;
 }
