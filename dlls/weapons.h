@@ -1165,7 +1165,6 @@ public:
 	void Precache();
 	int iItemSlot() { return 2; }
 	int GetItemInfo(ItemInfo* p);
-	void Holster(int skiplocal = 0);
 	int AddToPlayer(CBasePlayer* pPlayer);
 
 	void PrimaryAttack();

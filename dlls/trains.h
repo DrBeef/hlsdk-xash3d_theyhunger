@@ -1,9 +1,9 @@
 /***
 *
 *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*	
-*	This product contains software technology licensed from Id 
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc. 
+*
+*	This product contains software technology licensed from Id
+*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
 *	All Rights Reserved.
 *
 *   Use, distribution, and modification of this source code and/or resulting
@@ -39,74 +39,74 @@
 class CPathTrack : public CPointEntity
 {
 public:
-	void Spawn( void );
-	void Activate( void );
-	void KeyValue( KeyValueData* pkvd);
+	void Spawn(void);
+	void Activate(void);
+	void KeyValue(KeyValueData* pkvd);
 
-	void SetPrevious( CPathTrack *pprevious );
-	void Link( void );
-	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
+	void SetPrevious(CPathTrack* pprevious);
+	void Link(void);
+	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
 
-	CPathTrack *ValidPath( CPathTrack *ppath, int testFlag );		// Returns ppath if enabled, NULL otherwise
-	void Project( CPathTrack *pstart, CPathTrack *pend, Vector *origin, float dist );
+	CPathTrack* ValidPath(CPathTrack* ppath, int testFlag);		// Returns ppath if enabled, NULL otherwise
+	void Project(CPathTrack* pstart, CPathTrack* pend, Vector* origin, float dist);
 
-	static CPathTrack *Instance( edict_t *pent );
+	static CPathTrack* Instance(edict_t* pent);
 
-	CPathTrack *LookAhead( Vector *origin, float dist, int move );
-	CPathTrack *Nearest( Vector origin );
+	CPathTrack* LookAhead(Vector* origin, float dist, int move);
+	CPathTrack* Nearest(Vector origin);
 
-	CPathTrack *GetNext( void );
-	CPathTrack *GetPrevious( void );
+	CPathTrack* GetNext(void);
+	CPathTrack* GetPrevious(void);
 
-	virtual int Save( CSave &save );
-	virtual int Restore( CRestore &restore );
+	virtual int Save(CSave& save);
+	virtual int Restore(CRestore& restore);
 
 	static TYPEDESCRIPTION m_SaveData[];
 #if PATH_SPARKLE_DEBUG
-	void EXPORT Sparkle( void );
+	void EXPORT Sparkle(void);
 #endif
 	float m_length;
 	string_t m_altName;
-	CPathTrack *m_pnext;
-	CPathTrack *m_pprevious;
-	CPathTrack *m_paltpath;
+	CPathTrack* m_pnext;
+	CPathTrack* m_pprevious;
+	CPathTrack* m_paltpath;
 };
 
 class CFuncTrackTrain : public CBaseEntity
 {
 public:
-	void Spawn( void );
-	void Precache( void );
+	void Spawn(void);
+	void Precache(void);
 
-	void Blocked( CBaseEntity *pOther );
-	void Use( CBaseEntity *pActivator, CBaseEntity *pCaller, USE_TYPE useType, float value );
-	void KeyValue( KeyValueData* pkvd );
+	void Blocked(CBaseEntity* pOther);
+	void Use(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value);
+	void KeyValue(KeyValueData* pkvd);
 
-	void EXPORT Next( void );
-	void EXPORT Find( void );
-	void EXPORT NearestPath( void );
-	void EXPORT DeadEnd( void );
+	void EXPORT Next(void);
+	void EXPORT Find(void);
+	void EXPORT NearestPath(void);
+	void EXPORT DeadEnd(void);
 
-	void NextThink( float thinkTime, BOOL alwaysThink );
+	void NextThink(float thinkTime, BOOL alwaysThink);
 
-	void SetTrack( CPathTrack *track ) { m_ppath = track->Nearest( pev->origin ); }
-	void SetControls( entvars_t *pevControls );
-	BOOL OnControls( entvars_t *pev );
+	void SetTrack(CPathTrack* track) { m_ppath = track->Nearest(pev->origin); }
+	void SetControls(entvars_t* pevControls);
+	BOOL OnControls(entvars_t* pev);
 
-	void StopSound( void );
-	void UpdateSound( void );
+	void StopSound(void);
+	void UpdateSound(void);
 
-	static CFuncTrackTrain *Instance( edict_t *pent );
+	static CFuncTrackTrain* Instance(edict_t* pent);
 
-	virtual int Save( CSave &save );
-	virtual int Restore( CRestore &restore );
+	virtual int Save(CSave& save);
+	virtual int Restore(CRestore& restore);
 
 	static TYPEDESCRIPTION m_SaveData[];
-	virtual int ObjectCaps( void ) { return ( CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION ) | FCAP_DIRECTIONAL_USE; }
+	virtual int ObjectCaps(void) { return (CBaseEntity::ObjectCaps() & ~FCAP_ACROSS_TRANSITION) | FCAP_DIRECTIONAL_USE; }
 
-	virtual void OverrideReset( void );
+	virtual void OverrideReset(void);
 
-	CPathTrack *m_ppath;
+	CPathTrack* m_ppath;
 	float m_length;
 	float m_height;
 	float m_speed;

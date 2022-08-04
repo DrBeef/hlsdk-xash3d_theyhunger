@@ -1,9 +1,9 @@
 /***
 *
 *	Copyright (c) 1996-2002, Valve LLC. All rights reserved.
-*	
-*	This product contains software technology licensed from Id 
-*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc. 
+*
+*	This product contains software technology licensed from Id
+*	Software, Inc. ("Id Technology").  Id Technology (c) 1996 Id Software, Inc.
 *	All Rights Reserved.
 *
 *   Use, distribution, and modification of this source code and/or resulting
@@ -50,71 +50,69 @@ enum egon_e {
 	EGON_HOLSTER
 };
 
-LINK_ENTITY_TO_CLASS( weapon_egon, CEgon )
+LINK_ENTITY_TO_CLASS(weapon_egon, CEgon)
 
 void CEgon::Spawn()
 {
 	Precache();
 	m_iId = WEAPON_EGON;
-	SET_MODEL( ENT( pev ), "models/w_egon.mdl" );
+	SET_MODEL(ENT(pev), "models/w_egon.mdl");
 
 	m_iDefaultAmmo = EGON_DEFAULT_GIVE;
 
 	FallInit();// get ready to fall down.
 }
 
-void CEgon::Precache( void )
+void CEgon::Precache(void)
 {
-	PRECACHE_MODEL( "models/w_egon.mdl" );
-	PRECACHE_MODEL( "models/v_egon.mdl" );
-	PRECACHE_MODEL( "models/p_egon.mdl" );
+	PRECACHE_MODEL("models/w_egon.mdl");
+	PRECACHE_MODEL("models/v_egon.mdl");
+	PRECACHE_MODEL("models/p_egon.mdl");
 
-	PRECACHE_MODEL( "models/w_9mmclip.mdl" );
-	PRECACHE_SOUND( "items/9mmclip1.wav" );
+	PRECACHE_MODEL("models/w_9mmclip.mdl");
+	PRECACHE_SOUND("items/9mmclip1.wav");
 
-	PRECACHE_SOUND( EGON_SOUND_OFF );
-	PRECACHE_SOUND( EGON_SOUND_RUN );
-	PRECACHE_SOUND( EGON_SOUND_STARTUP );
+	PRECACHE_SOUND(EGON_SOUND_OFF);
+	PRECACHE_SOUND(EGON_SOUND_RUN);
+	PRECACHE_SOUND(EGON_SOUND_STARTUP);
 
-	PRECACHE_MODEL( EGON_BEAM_SPRITE );
-	PRECACHE_MODEL( EGON_FLARE_SPRITE );
+	PRECACHE_MODEL(EGON_BEAM_SPRITE);
+	PRECACHE_MODEL(EGON_FLARE_SPRITE);
 
-	PRECACHE_SOUND( "weapons/357_cock1.wav" );
+	PRECACHE_SOUND("weapons/357_cock1.wav");
 
-	PRECACHE_SOUND( "weapons/flmfire2.wav" );
+	PRECACHE_SOUND("weapons/flmfire2.wav");
 
-	UTIL_PrecacheOther( "einar_flame" );
-	m_usEgonFire = PRECACHE_EVENT(1, "events/egon_fire.sc");
-	m_usEgonStop = PRECACHE_EVENT(1, "events/egon_stop.sc");
+	UTIL_PrecacheOther("einar_flame");
 }
 
-BOOL CEgon::Deploy( void )
+BOOL CEgon::Deploy(void)
 {
-	return DefaultDeploy( "models/v_egon.mdl", "models/p_egon.mdl", EGON_DRAW, "egon" );
+	return DefaultDeploy("models/v_egon.mdl", "models/p_egon.mdl", EGON_DRAW, "egon");
 }
 
-int CEgon::AddToPlayer( CBasePlayer *pPlayer )
+int CEgon::AddToPlayer(CBasePlayer* pPlayer)
 {
-	if( CBasePlayerWeapon::AddToPlayer( pPlayer ) )
+	if (CBasePlayerWeapon::AddToPlayer(pPlayer))
 	{
-		MESSAGE_BEGIN( MSG_ONE, gmsgWeapPickup, NULL, pPlayer->pev );
-			WRITE_BYTE( m_iId );
+		MESSAGE_BEGIN(MSG_ONE, gmsgWeapPickup, NULL, pPlayer->pev);
+		WRITE_BYTE(m_iId);
 		MESSAGE_END();
 		return TRUE;
 	}
 	return FALSE;
 }
 
-void CEgon::Holster( int skiplocal /* = 0 */ )
+void CEgon::Holster(int skiplocal /* = 0 */)
 {
 	KillLaser();
 	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5f;
-	SendWeaponAnim( EGON_HOLSTER );
+	SendWeaponAnim(EGON_HOLSTER);
 }
 
-int CEgon::GetItemInfo( ItemInfo *p )
+int CEgon::GetItemInfo(ItemInfo* p)
 {
-	p->pszName = STRING( pev->classname );
+	p->pszName = STRING(pev->classname);
 	p->pszAmmo1 = "gas";
 	p->iMaxAmmo1 = URANIUM_MAX_CARRY;
 	p->pszAmmo2 = NULL;
@@ -129,26 +127,26 @@ int CEgon::GetItemInfo( ItemInfo *p )
 	return 1;
 }
 
-BOOL CEgon::HasAmmo( void )
+BOOL CEgon::HasAmmo(void)
 {
-	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 )
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 		return FALSE;
 
 	return TRUE;
 }
 
-void CEgon::UseAmmo( int count )
+void CEgon::UseAmmo(int count)
 {
-	if( m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= count )
+	if (m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] >= count)
 		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] -= count;
 	else
 		m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] = 0;
 }
 
-void CEgon::PrimaryAttack( void )
+void CEgon::PrimaryAttack(void)
 {
 	// don't fire underwater
-	if( m_pPlayer->pev->waterlevel == 3 )
+	if (m_pPlayer->pev->waterlevel == 3)
 	{
 		PlayEmptySound();
 		m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.2f;
@@ -156,7 +154,7 @@ void CEgon::PrimaryAttack( void )
 		return;
 	}
 
-	if( !HasAmmo() )
+	if (!HasAmmo())
 	{
 		m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.2f;
 		PlayEmptySound();
@@ -166,101 +164,92 @@ void CEgon::PrimaryAttack( void )
 
 	m_pPlayer->m_iWeaponVolume = EGON_PRIMARY_VOLUME;
 
-	int flags;
-#if defined( CLIENT_WEAPONS )
-	flags = FEV_NOTHOST;
-#else
-	flags = 0;
-#endif
-
-	PLAYBACK_EVENT_FULL(flags, m_pPlayer->edict(), m_usEgonFire, 0, (float*)&g_vecZero, (float*)&g_vecZero, 0.0, 0.0, 0, 0, 0, 0);
-
 	// player "shoot" animation
-	m_pPlayer->SetAnimation( PLAYER_ATTACK1 );
+	m_pPlayer->SetAnimation(PLAYER_ATTACK1);
 
-	UseAmmo( 1 );
+	UseAmmo(1);
 
-	SendWeaponAnim( EGON_FIRE1 + RANDOM_LONG( 0, 3 ), 0 );
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "weapons/flmfire2.wav", 1.0, ATTN_NORM, 0, 93 + RANDOM_LONG( 0, 15 ) );
+	SendWeaponAnim(EGON_FIRE1 + RANDOM_LONG(0, 3), 0);
+	EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "weapons/flmfire2.wav", 1.0, ATTN_NORM, 0, 93 + RANDOM_LONG(0, 15));
 
 #ifndef CLIENT_DLL
-	UTIL_MakeVectors( m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle );
+	UTIL_MakeVectors(m_pPlayer->pev->v_angle + m_pPlayer->pev->punchangle);
 	Vector angle = m_pPlayer->GetWeaponAngles();
 	angle.x = -angle.x;
-	CEinarFlameRocket::FlameCreate(m_pPlayer->GetGunPosition(), angle, ENT( m_pPlayer->pev ) );
+	Vector position = m_pPlayer->GetGunPosition()
+		+ gpGlobals->v_forward * 25
+		+ gpGlobals->v_right * 0
+		+ gpGlobals->v_up * 25;
+
+	CEinarFlameRocket::FlameCreate(position, angle, ENT(m_pPlayer->pev));
 #endif
-	if( !m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0 )
+	if (!m_iClip && m_pPlayer->m_rgAmmo[m_iPrimaryAmmoType] <= 0)
 		// HEV suit - indicate out of ammo condition
-		m_pPlayer->SetSuitUpdate( "!HEV_AMO0", FALSE, 0 );
+		m_pPlayer->SetSuitUpdate("!HEV_AMO0", FALSE, 0);
 
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.2f;
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 0.5f;
 }
 
-void CEgon::WeaponIdle( void )
+void CEgon::WeaponIdle(void)
 {
 	ResetEmptySound();
 
-	if( m_flTimeWeaponIdle > UTIL_WeaponTimeBase() )
+	if (m_flTimeWeaponIdle > UTIL_WeaponTimeBase())
 		return;
 
 	int iAnim;
 
-	float flRand = RANDOM_FLOAT( 0.0f, 1.0f );
+	float flRand = RANDOM_FLOAT(0.0f, 1.0f);
 
-	if( flRand <= 0.5f )
+	if (flRand <= 0.5f)
 	{
 		iAnim = EGON_IDLE1;
-		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat( m_pPlayer->random_seed, 10.0f, 15.0f );
+		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + UTIL_SharedRandomFloat(m_pPlayer->random_seed, 10.0f, 15.0f);
 	}
-	else 
+	else
 	{
 		iAnim = EGON_FIDGET1;
 		m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 3.0f;
 	}
 
-	SendWeaponAnim( iAnim );
+	SendWeaponAnim(iAnim);
 }
 
-void CEgon::EndAttack( void )
+void CEgon::EndAttack(void)
 {
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_STATIC, "weapons/egon_run3.wav", 0, 0, SND_STOP, PITCH_NORM );
-	EMIT_SOUND_DYN( ENT( pev ), CHAN_WEAPON, "weapons/egon_off1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM );
-	bool bMakeNoise = false;
+	EMIT_SOUND_DYN(ENT(pev), CHAN_STATIC, "weapons/egon_run3.wav", 0, 0, SND_STOP, PITCH_NORM);
+	EMIT_SOUND_DYN(ENT(pev), CHAN_WEAPON, "weapons/egon_off1.wav", 1.0, ATTN_NORM, 0, PITCH_NORM);
 
-	if (m_fireState != FIRE_OFF) //Checking the button just in case!.
-		bMakeNoise = true;
-
-	PLAYBACK_EVENT_FULL(FEV_GLOBAL | FEV_RELIABLE, m_pPlayer->edict(), m_usEgonStop, 0, (float*)&m_pPlayer->pev->origin, (float*)&m_pPlayer->pev->angles, 0.0, 0.0, bMakeNoise, 0, 0, 0);
 	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 2.0f;
 	m_flNextPrimaryAttack = m_flNextSecondaryAttack = UTIL_WeaponTimeBase() + 0.5f;
 }
 
 class CEgonAmmo : public CBasePlayerAmmo
 {
-	void Spawn( void )
-	{ 
+	void Spawn(void)
+	{
 		Precache();
-		SET_MODEL( ENT( pev ), "models/w_gas.mdl" );
+		SET_MODEL(ENT(pev), "models/w_gas.mdl");
 		CBasePlayerAmmo::Spawn();
 	}
 
-	void Precache( void )
+	void Precache(void)
 	{
-		PRECACHE_MODEL( "models/w_gas.mdl" );
-		PRECACHE_SOUND( "player/pl_slosh1.wav" );
+		PRECACHE_MODEL("models/w_gas.mdl");
+		PRECACHE_SOUND("player/pl_slosh1.wav");
 	}
 
-	BOOL AddAmmo( CBaseEntity *pOther )
+	BOOL AddAmmo(CBaseEntity* pOther)
 	{
-		if( pOther->GiveAmmo( AMMO_GAS_GIVE, "gas", URANIUM_MAX_CARRY ) != -1 )
+		if (pOther->GiveAmmo(AMMO_GAS_GIVE, "gas", URANIUM_MAX_CARRY) != -1)
 		{
-			EMIT_SOUND( ENT( pev ), CHAN_ITEM, "player/pl_slosh1.wav", 1, ATTN_NORM );
+			EMIT_SOUND(ENT(pev), CHAN_ITEM, "player/pl_slosh1.wav", 1, ATTN_NORM);
 			return TRUE;
 		}
 		return FALSE;
 	}
 };
 
-LINK_ENTITY_TO_CLASS( ammo_egonclip, CEgonAmmo )
+LINK_ENTITY_TO_CLASS(ammo_egonclip, CEgonAmmo)
 #endif
